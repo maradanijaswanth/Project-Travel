@@ -1,0 +1,165 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  user_id       String     @id @default(uuid())
+  email         String     @unique
+  password_hash String
+  full_name     String
+  role          String     @default("CUSTOMER") // ADMIN, OPERATOR, SUPPLIER, CUSTOMER
+  is_active     Boolean    @default(true)
+  created_at    DateTime   @default(now())
+  updated_at    DateTime   @updatedAt
+  customers     Customer[]
+  approvals     Approval[]
+  journeys      Journey[]  @relation("ValidatedJourneys")
+}
+
+model Customer {
+  customer_id        String    @id @default(uuid())
+  user_id            String?
+  user               User?     @relation(fields: [user_id], references: [user_id], onDelete: SetNull)
+  full_name          String
+  email              String
+  phone              String?
+  trip_purpose       String
+  traveller_type     String
+  duration_days      Int
+  season             String    // Spring, Summer, Autumn, Winter
+  budget_level       String    @default("Standard") // Budget, Standard, Premium, Luxury
+  special_needs      String?
+  selected_interests String    // JSON string array e.g. '["Culture", "Nature"]'
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
+  journeys           Journey[]
+}
+
+model Supplier {
+  supplier_id         String       @id @default(uuid())
+  name                String
+  category            String       // Hotel, Restaurant, Activity, Transport
+  season              String       @default("All") // All, Spring, Summer, Autumn, Winter
+  capacity            Int          @default(1)
+  price_range         String       @default("Standard") // Budget, Standard, Premium, Luxury
+  location            String
+  latitude            Float?
+  longitude           Float?
+  languages_supported String       @default("[\"English\",\"Latvian\"]") // JSON string array
+  status              String       @default("ACTIVE") // ACTIVE, INACTIVE, REVIEW
+  maturity_level      String       @default("M1") // M0, M1, M2, M3, M4
+  contact_name        String?
+  contact_email       String?
+  contact_phone       String?
+  website_url         String?
+  description         String?
+  created_at          DateTime     @default(now())
+  updated_at          DateTime     @updatedAt
+  capabilities        Capability[]
+  modules             Module[]
+}
+
+model Capability {
+  capability_id              String   @id @default(uuid())
+  supplier_id                String
+  supplier                   Supplier @relation(fields: [supplier_id], references: [supplier_id], onDelete: Cascade)
+  name                       String
+  category                   String
+  participation_mode         String   @default("Interact") // Observe, Interact, Make, Perform, Discuss, Move
+  is_winter_capable          Boolean  @default(false)
+  is_private_group_feasible  Boolean  @default(true)
+  min_capacity               Int      @default(1)
+  max_capacity               Int      @default(30)
+  equipment_notes            String?
+  operating_boundaries       String?
+  created_at                 DateTime @default(now())
+  updated_at                 DateTime @updatedAt
+  modules                    Module[]
+}
+
+model Module {
+  module_id            String       @id @default(uuid())
+  supplier_id          String
+  supplier             Supplier     @relation(fields: [supplier_id], references: [supplier_id], onDelete: Cascade)
+  capability_id        String?
+  capability           Capability?  @relation(fields: [capability_id], references: [capability_id], onDelete: SetNull)
+  title                String
+  description          String
+  category             String       // Hotel, Restaurant, Activity, Transport
+  route_code           String       // LIVU, DAUGAVA, BALTIC_WAY, JACOB, FREEDOM, LIGHT, MARA, RIGA_GATEWAY
+  seasonal_lens        String       // Awakening, Expansion, Integration, Silence
+  seasons_supported    String       @default("[\"Spring\",\"Summer\",\"Autumn\",\"Winter\"]") // JSON array
+  target_segments      String       @default("[\"Families\",\"Cultural Explorers\"]") // JSON array
+  duration_hours       Float        @default(2.0)
+  indicative_price_eur Float        @default(0.0)
+  price_tier           String       @default("Standard") // Budget, Standard, Premium, Luxury
+  location_name        String
+  maturity_level       String       @default("M3") // M0, M1, M2, M3, M4
+  requires_human_quote Boolean      @default(true)
+  provenance           String       @default("CURRENT_OFFER") // CURRENT_OFFER, SUPPLIER_CLAIM, CO_DESIGN_PROPOSAL, FIELD_VERIFIED, APPROVED_COMMERCIAL
+  evidence_notes       String?
+  safety_fallback      String?
+  created_at           DateTime     @default(now())
+  updated_at           DateTime     @updatedAt
+  itineraries          Itinerary[]
+}
+
+model Journey {
+  journey_id           String      @id @default(uuid())
+  customer_id          String
+  customer             Customer    @relation(fields: [customer_id], references: [customer_id], onDelete: Cascade)
+  title                String
+  summary              String
+  status               String      @default("DRAFT") // DRAFT, OPS_REVIEW, APPROVED, CONFIRMED, REJECTED
+  total_days           Int
+  season               String      // Spring, Summer, Autumn, Winter
+  primary_route        String      // LIVU, DAUGAVA, BALTIC_WAY, JACOB, FREEDOM, LIGHT, MARA, RIGA_GATEWAY
+  estimated_budget_eur Float       @default(0.0)
+  budget_tier          String      @default("Standard")
+  ai_confidence_score  Float       @default(0.85)
+  ai_rationale         String
+  operator_notes       String?
+  validated_by_user_id String?
+  validated_by         User?       @relation("ValidatedJourneys", fields: [validated_by_user_id], references: [user_id], onDelete: SetNull)
+  created_at           DateTime    @default(now())
+  updated_at           DateTime    @updatedAt
+  itineraries          Itinerary[]
+  approvals            Approval[]
+}
+
+model Itinerary {
+  itinerary_id    String   @id @default(uuid())
+  journey_id      String
+  journey         Journey  @relation(fields: [journey_id], references: [journey_id], onDelete: Cascade)
+  day_number      Int
+  time_slot       String   // MORNING, AFTERNOON, EVENING, FULL_DAY
+  module_id       String
+  module          Module   @relation(fields: [module_id], references: [module_id], onDelete: Restrict)
+  custom_title    String?
+  notes           String?
+  why_recommended String
+  sort_order      Int      @default(0)
+  created_at      DateTime @default(now())
+}
+
+model Approval {
+  approval_id      String   @id @default(uuid())
+  journey_id       String
+  journey          Journey  @relation(fields: [journey_id], references: [journey_id], onDelete: Cascade)
+  reviewer_user_id String?
+  reviewer         User?    @relation(fields: [reviewer_user_id], references: [user_id], onDelete: SetNull)
+  reviewer_name    String
+  from_status      String
+  to_status        String
+  decision         String   // SUBMITTED, APPROVED, REJECTED, CONFIRMED
+  comments         String?
+  slot_checked     Boolean  @default(false)
+  pricing_checked  Boolean  @default(false)
+  safety_checked   Boolean  @default(false)
+  created_at       DateTime @default(now())
+}

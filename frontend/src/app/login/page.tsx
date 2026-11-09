@@ -19,12 +19,15 @@ export default function LoginPage() {
 
     try {
       const res = await authApi.login({ email, password });
-      if (res.success && res.data) {
-        localStorage.setItem('eximia_token', res.data.token);
-        localStorage.setItem('eximia_user', JSON.stringify(res.data.user));
+      const token = res.data?.token || (res as any).token;
+      const user = res.data?.user || (res as any).user;
+
+      if (res.success && token) {
+        localStorage.setItem('eximia_token', token);
+        localStorage.setItem('eximia_user', JSON.stringify(user));
         router.push('/admin');
       } else {
-        setErrorMsg(res.error || 'Authentication failed');
+        setErrorMsg(res.error || 'Authentication failed: Invalid credentials');
       }
     } catch (err: any) {
       setErrorMsg(err.message || 'Failed to connect to authentication service');

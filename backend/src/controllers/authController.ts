@@ -48,6 +48,15 @@ export class AuthController {
           fullName: user.full_name,
           role: user.role,
         },
+        data: {
+          token,
+          user: {
+            userId: user.user_id,
+            email: user.email,
+            fullName: user.full_name,
+            role: user.role,
+          },
+        },
       });
     } catch (err: any) {
       console.error('[AuthController.register] Error:', err);
@@ -86,6 +95,15 @@ export class AuthController {
           email: user.email,
           fullName: user.full_name,
           role: user.role,
+        },
+        data: {
+          token,
+          user: {
+            userId: user.user_id,
+            email: user.email,
+            fullName: user.full_name,
+            role: user.role,
+          },
         },
       });
     } catch (err: any) {
